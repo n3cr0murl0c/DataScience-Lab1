@@ -1,0 +1,400 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{listings}
+\usepackage{caption}
+
+\geometry{top=2.54cm, bottom=2.54cm, left=2.54cm, right=2.54cm}
+\setstretch{1.1}
+
+\definecolor{headerblue}{RGB}{0,51,102}
+\definecolor{rowgray}{RGB}{240,240,240}
+\definecolor{codegray}{RGB}{248,248,248}
+\definecolor{codegreen}{RGB}{0,120,0}
+\definecolor{codepurple}{RGB}{128,0,128}
+
+\lstset{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{headerblue}\bfseries,
+  commentstyle=\color{codegreen}\itshape,
+  stringstyle=\color{codepurple},
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!50},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  xleftmargin=1.8em,
+  language=Python,
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small CIENCIA DE DATOS --- TALLER GRUPAL}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\hypersetup{colorlinks=true, linkcolor=headerblue, urlcolor=headerblue, citecolor=headerblue}
+
+\captionsetup[figure]{font=small,labelfont=bf,format=plain,justification=centering}
+\captionsetup[table]{font=small,labelfont=bf,format=plain,justification=centering}
+
+\begin{document}
+
+% ── PORTADA ──────────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    {\Large\bfseries UNIVERSIDAD ESTATAL DE MILAGRO\par}
+    \vspace{0.3cm}
+    {\large\bfseries MAESTRÍA EN INGENIERÍA EN SOFTWARE\\
+    CON MENCIÓN EN SISTEMAS INTELIGENTES E\\
+    INTENSIVOS EN DATOS\par}
+    \vspace{1.5cm}
+    {\Large\bfseries MÓDULO: CIENCIA DE DATOS\par}
+    \vspace{0.3cm}
+    {\large Unidades 1 y 2: Regresión lineal, relaciones complejas\\
+    y validación cruzada\par}
+    \vspace{1.2cm}
+    {\LARGE\bfseries Estudio Comparativo de Modelos de Regresión\\[0.3em]
+    sobre el Conjunto NASA93 (COCOMO):\\[0.3em]
+    OLS, Regresión Polinómica y Ridge\par}
+    \vfill
+    {\large
+    \begin{tabular}{rl}
+        \textbf{Integrante:}    & Escobar, Erick \\[0.4em]
+        \textbf{Docente:}       & Guillermo Baquerizo Palma, M.Sc. \\[0.4em]
+        \textbf{Asignatura:}    & Ciencia de Datos \\[0.4em]
+        \textbf{Actividad:}     & A1 --- Taller / Tarea grupal \\[0.4em]
+        \textbf{Cohorte:}       & I --- 2026 \\
+    \end{tabular}\par}
+    \vspace{1.5cm}
+    {\large \today\par}
+\end{titlepage}
+
+% ── 1. INTRODUCCIÓN ──────────────────────────────────────────────────────────
+
+\section{Planteamiento del Problema y Dataset}
+\subsection{Repositorio Público}
+Todo el dataset, documentación y el desarrollo se lo puede encontrar público en: 
+\href{https://github.com/n3cr0murl0c/DataScience-Lab1}{GithubRepo}
+\subsection{GoogleCollab Notebook}
+Todo el dataset y el desarrollo se lo puede encontrar público en: 
+\href{https://colab.research.google.com/drive/1fvhuDQhcNRDZzjQUUtAXuexb74Eo9zhw?usp=sharing}{GoogleCollab Notebook}
+\subsection{Contexto y Motivación}
+
+La estimación del esfuerzo de desarrollo de software es una actividad crítica en la gestión de proyectos de ingeniería de software, ya que de su precisión dependen el presupuesto, la planificación y la asignación de recursos humanos~[1]. El modelo \textbf{COCOMO} (\textit{Constructive Cost Model}) propuesto por Boehm en 1981 sostiene que el esfuerzo (en persona-meses) se relaciona con el tamaño del software (en miles de líneas de código, KLOC) mediante una ley de potencia modulada por factores de ajuste (\textit{effort multipliers}):
+
+\begin{equation}
+\mathrm{effort} = a \cdot \mathrm{KLOC}^{b} \cdot \prod_{i=1}^{15} EM_{i}
+\label{eq:cocomo}
+\end{equation}
+
+donde $a$ y $b$ son parámetros calibrados por dominio y $EM_i$ son los 15 multiplicadores de esfuerzo. La ecuación~\ref{eq:cocomo} es \emph{intrínsecamente no lineal} en su forma original, pero se linealiza al aplicar logaritmo natural, lo que la convierte en un excelente caso de estudio para los modelos cubiertos en las Unidades 1 y 2 del módulo.
+
+\subsection{Descripción del Dataset NASA93}
+
+El conjunto de datos \texttt{nasa93}~[4] contiene 93 proyectos de software completados entre 1971 y 1987 en cinco centros de la NASA, recopilados por Jairus Hihn (JPL). Está estructurado conforme al formato COCOMO-I de Boehm y disponible públicamente en el repositorio PROMISE bajo DOI~[5].
+
+\begin{table}[!ht]
+\caption{Composición del dataset NASA93}\label{tab:dataset}
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|p{3.5cm}|p{2.2cm}|X|}
+\hline
+\rowcolor{headerblue}\color{white}\textbf{Categoría} &
+\color{white}\textbf{N.º atributos} &
+\color{white}\textbf{Descripción} \\
+\hline
+Variable respuesta & 1 & \texttt{act\_effort}: esfuerzo real (persona-meses) \\
+\hline
+\rowcolor{rowgray}
+Tamaño del software & 1 & \texttt{equivphyskloc}: KLOC equivalentes \\
+\hline
+Modo COCOMO & 1 & \texttt{mode}: organic, semidetached, embedded \\
+\hline
+\rowcolor{rowgray}
+Cost drivers (EM) & 15 & Escala ordinal: vl, l, n, h, vh, xh \\
+\hline
+Metadatos & 6 & \texttt{projectname}, \texttt{cat2}, \texttt{forg}, \texttt{center}, \texttt{year}, \texttt{recordnumber} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\noindent\textbf{Variable respuesta:} \texttt{act\_effort} (persona-meses, continua positiva). Estadísticos descriptivos: $n=93$, media $=624.4$ PM, desviación estándar $=1135.9$ PM, mínimo $=8.4$ PM, máximo $=8211$ PM. La distribución presenta fuerte sesgo a la derecha (Figura~\ref{fig:eda}a).
+
+\noindent\textbf{Predictores iniciales:} el predictor primario es \texttt{equivphyskloc} (KLOC). Los 15 cost drivers (\texttt{rely}, \texttt{data}, \texttt{cplx}, \texttt{time}, \texttt{stor}, \texttt{virt}, \texttt{turn}, \texttt{acap}, \texttt{aexp}, \texttt{pcap}, \texttt{vexp}, \texttt{lexp}, \texttt{modp}, \texttt{tool}, \texttt{sced}) modulan el esfuerzo según las características del proyecto y del equipo. El campo \texttt{mode} se codifica como dummies (\texttt{mode\_organic}, \texttt{mode\_semidetached}), resultando 18 features finales tras preprocesamiento.
+
+\noindent\textbf{Faltantes:} el dataset no presenta valores nulos tras la carga del archivo ARFF original.
+
+\section{Metodología}
+
+\subsection{Preprocesamiento Reproducible}
+
+El pipeline de preprocesamiento se diseñó para evitar fuga de datos (\textit{data leakage}) durante la validación cruzada:
+
+\begin{enumerate}[itemsep=2pt,leftmargin=1.5em]
+    \item \textbf{Carga del ARFF} con parser manual (filas tras \texttt{@data}).
+    \item \textbf{Casting numérico} de columnas continuas (\texttt{equivphyskloc}, \texttt{act\_effort}).
+    \item \textbf{Mapeo ordinal de cost drivers} a sus valores multiplicativos oficiales de COCOMO-I~[1] (e.g., \texttt{rely}: vl=0.75, n=1.00, xh=1.40).
+    \item \textbf{Codificación one-hot} del modo COCOMO con \texttt{drop\_first=True}.
+    \item \textbf{Transformación logarítmica} de KLOC, cost drivers y respuesta, motivada por la Ecuación~\ref{eq:cocomo}: $\log(\mathrm{effort}) = \log(a) + b\log(\mathrm{KLOC}) + \sum_i \log(EM_i)$.
+    \item \textbf{Escalamiento estándar} \emph{dentro} de cada fold de validación cruzada mediante \texttt{sklearn.Pipeline}~[8], garantizando que las estadísticas (media, desviación) se calculen sólo con datos de entrenamiento.
+\end{enumerate}
+
+\subsection{División Entrenamiento--Prueba y Validación Cruzada}
+
+Se utilizó una partición aleatoria 80/20 estratificada por orden de proyecto (\texttt{random\_state=42}): \textbf{74 muestras de entrenamiento} y \textbf{19 muestras de prueba}. Adicionalmente, para evaluar la estabilidad de los modelos sobre el conjunto completo se aplicó \textbf{validación cruzada \textit{k}-fold repetida} con $k=5$ y $n_{\text{repeats}}=10$ (50 folds totales), siguiendo las recomendaciones de Bouckaert y Frank~[6] para datasets pequeños donde una sola partición CV puede ser engañosa.
+
+\subsection{Modelos Evaluados}
+
+Se construyeron tres modelos para responder al criterio académico de comparar un modelo base contra alternativas técnicamente justificables:
+
+\begin{enumerate}[itemsep=4pt,leftmargin=1.5em]
+\item \textbf{Modelo base --- OLS (Ordinary Least Squares):}
+\[
+\log(\hat{y}) = \beta_0 + \beta_1 \log(\mathrm{KLOC}) + \sum_{i=1}^{15} \beta_{i+1} \log(EM_i) + \sum_{j} \gamma_j \mathbb{1}\{\mathrm{mode}=j\}
+\]
+Equivale a la formulación logarítmica directa de COCOMO. Se ajusta minimizando $\sum (y_i - \hat{y}_i)^2$ sobre escala logarítmica.
+
+\item \textbf{Alternativa 1 --- Regresión polinómica (grado 2 en KLOC):} se añade el término $\log(\mathrm{KLOC})^2$ para capturar posibles desviaciones de la linealidad pura en escala log-log (e.g., cambio de régimen entre proyectos pequeños y grandes). Se mantiene el resto del modelo lineal para evitar la explosión combinatoria de features ($\binom{18}{2}+18+1=172$ variables sobre 93 muestras provocaría sobreajuste catastrófico).
+
+\item \textbf{Alternativa 2 --- Ridge (regresión regularizada $L_2$):}
+\[
+\hat{\beta} = \arg\min_{\beta} \left\{ \sum_{i=1}^{n}(y_i - x_i^\top \beta)^2 + \alpha \|\beta\|_2^2 \right\}
+\]
+El parámetro $\alpha$ se selecciona mediante \texttt{RidgeCV} con búsqueda sobre $\alpha \in \{10^{-3}, \ldots, 10^{3}\}$ (50 valores logarítmicamente espaciados) y CV interna de 5 folds. Ridge se justifica empíricamente por la presencia de multicolinealidad demostrada en la Sección~\ref{sec:vif}; su fundamento teórico como método de contracción para reducir varianza está ampliamente documentado en la literatura de aprendizaje estadístico~[7].
+\end{enumerate}
+
+\subsection{Implementación: Pipeline Anti-Fuga}
+
+El uso de \texttt{sklearn.Pipeline} es la salvaguarda central contra la fuga de datos: encadena el escalamiento y el modelo en un objeto único, de modo que \texttt{StandardScaler} se ajusta exclusivamente con los datos de entrenamiento de cada fold durante la validación cruzada.
+
+\begin{lstlisting}[caption={Pipeline sklearn que aplica escalamiento dentro de cada fold de CV},label={lst:pipeline}]
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression, RidgeCV
+from sklearn.model_selection import RepeatedKFold, cross_val_score
+
+ols   = Pipeline([("scaler", StandardScaler()),
+                  ("model",  LinearRegression())])
+ridge = Pipeline([("scaler", StandardScaler()),
+                  ("model",  RidgeCV(alphas=np.logspace(-3,3,50), cv=5))])
+
+cv = RepeatedKFold(n_splits=5, n_repeats=10, random_state=42)
+scores = cross_val_score(ols, X_log, y_log, cv=cv,
+                         scoring="neg_root_mean_squared_error")
+\end{lstlisting}
+
+\section{Análisis Exploratorio y Diagnóstico de Supuestos}
+
+\subsection{Distribución de la Respuesta}
+
+La Figura~\ref{fig:eda} resume dos hallazgos críticos. El panel (a) muestra el fuerte sesgo a la derecha de \texttt{act\_effort}: la mediana (98 PM) es 6.4 veces menor que la media (624 PM), y el máximo (8211 PM) está a 6.7 desviaciones estándar del promedio. El panel (b) confirma la \textbf{linealidad en escala log--log} entre KLOC y esfuerzo: $\log(\mathrm{effort}) = 0.93 \log(\mathrm{KLOC}) + 1.94$, con pendiente $b=0.93$ consistente con los valores teóricos reportados por Boehm~[1] para modo \textit{semidetached} ($b \approx 1.05$).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig1_eda.png}
+\caption{(a) Distribución del esfuerzo en escala original: fuerte sesgo positivo. (b) Relación log-log entre KLOC y esfuerzo: linealidad consistente con la formulación COCOMO. Estos hallazgos justifican el uso de transformación logarítmica.}
+\label{fig:eda}
+\end{figure}
+
+\subsection{Diagnóstico de Supuestos del Modelo OLS}
+
+La Figura~\ref{fig:diagnostico} presenta el diagnóstico clásico de supuestos sobre los residuos del modelo OLS ajustado al conjunto de entrenamiento. La Tabla~\ref{tab:supuestos} resume las pruebas estadísticas formales.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{fig2_diagnostico.png}
+\caption{Diagnóstico de supuestos del modelo OLS: (a) ausencia de patrón sistemático en residuos vs ajustados; (b) Q-Q plot con desviación leve en colas; (c) distribución aproximadamente simétrica; (d) Scale-Location sin patrón en embudo.}
+\label{fig:diagnostico}
+\end{figure}
+
+\begin{table}[!ht]
+\caption{Pruebas formales sobre supuestos del modelo OLS}\label{tab:supuestos}
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|p{3.5cm}|p{4.5cm}|p{2.5cm}|X|}
+\hline
+\rowcolor{headerblue}\color{white}\textbf{Supuesto} &
+\color{white}\textbf{Prueba} &
+\color{white}\textbf{p-valor} &
+\color{white}\textbf{Conclusión} \\
+\hline
+Normalidad residuos & Shapiro-Wilk & $p = 0.272$ & No se rechaza $H_0$ \\
+\hline
+\rowcolor{rowgray}
+Homoscedasticidad & Breusch-Pagan & $p = 0.412$ & No se rechaza $H_0$ \\
+\hline
+Multicolinealidad & VIF (máximo) & --- & VIF $= 10.89$ (alerta) \\
+\hline
+\end{tabularx}
+\\[2pt]
+\small\textit{Nota.} Las pruebas se realizan sobre los residuos del OLS ajustado a 74 muestras de entrenamiento. La hipótesis nula de Shapiro-Wilk es normalidad; la de Breusch-Pagan es homoscedasticidad. La transformación log de la respuesta es la responsable de que ambos supuestos se sostengan.
+\end{table}
+
+\subsection{Multicolinealidad y Justificación de Ridge}\label{sec:vif}
+
+La Figura~\ref{fig:vif} muestra el \textbf{Factor de Inflación de Varianza (VIF)} para los 18 predictores. Se identifican tres niveles de severidad: $\texttt{equivphyskloc}$ supera el umbral crítico de 10 (VIF = 10.89), tres predictores adicionales (\texttt{acap} = 8.43, \texttt{mode\_semidetached} = 7.72, \texttt{time} = 7.33) se sitúan en la zona de alerta ($5 < $ VIF $\leq 10$), y otros tres (\texttt{aexp}, \texttt{rely}, \texttt{cplx}) están cerca del umbral. Esta multicolinealidad es \emph{esperada} por el diseño de COCOMO: proyectos con alta complejidad (\texttt{cplx}) tienden a tener altos requerimientos de confiabilidad (\texttt{rely}) y restricciones de tiempo de ejecución (\texttt{time}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{fig3_vif.png}
+\caption{Factor de inflación de varianza por predictor. \texttt{equivphyskloc} supera el umbral crítico (VIF $>$ 10), justificando empíricamente el uso de regularización Ridge.}
+\label{fig:vif}
+\end{figure}
+
+\noindent\textbf{Implicación metodológica:} la multicolinealidad inflará la varianza de los coeficientes OLS, haciéndolos inestables frente a pequeñas perturbaciones de los datos. Este es precisamente el escenario para el cual Ridge fue diseñado: contraer los coeficientes hacia cero a costa de introducir un sesgo controlado, reduciendo la varianza total del error de generalización~[3].
+
+\section{Resultados}
+
+\subsection{Métricas Comparativas}
+
+La Tabla~\ref{tab:metricas} consolida las métricas de los tres modelos sobre los conjuntos de entrenamiento, prueba y validación cruzada repetida. Las métricas MAE y RMSE se reportan en \emph{persona-meses} (escala original, tras aplicar $\exp(\cdot)$ a las predicciones logarítmicas); R$^2$ CV se reporta en escala logarítmica, que es la escala donde se ajustaron los modelos.
+
+\begin{table}[!ht]
+\caption{Comparación de desempeño: OLS, Polinómica y Ridge}\label{tab:metricas}
+\centering
+\renewcommand{\arraystretch}{1.3}
+\small
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\rowcolor{headerblue}
+\color{white}\textbf{Modelo} &
+\color{white}\textbf{R$^2$ Train} &
+\color{white}\textbf{R$^2$ Test} &
+\color{white}\textbf{R$^2$ CV (log)} &
+\color{white}\textbf{MAE Test (PM)} &
+\color{white}\textbf{RMSE Test (PM)} \\
+\hline
+OLS         & 0.874 & 0.673 & $0.738 \pm 0.159$ & 107.45 & 202.72 \\
+\hline
+\rowcolor{rowgray}
+Polinómica  & 0.867 & 0.701 & $0.731 \pm 0.160$ & 105.06 & 193.83 \\
+\hline
+Ridge ($\alpha^{*}=4.71$) & 0.794 & \textbf{0.799} & $\mathbf{0.791 \pm 0.107}$ & \textbf{94.69} & \textbf{159.06} \\
+\hline
+\end{tabular}
+\\[2pt]
+\small\textit{Nota.} R$^2$ Train y Test calculados en escala original (PM) tras transformación inversa. R$^2$ CV reportado como media $\pm$ desviación estándar sobre 50 folds (5-fold $\times$ 10 repeticiones).
+\end{table}
+
+\subsection{Visualización Comparativa}
+
+La Figura~\ref{fig:predicciones} muestra los gráficos de predicción vs valor real para los tres modelos sobre el conjunto de prueba. La línea roja punteada representa la predicción perfecta. Ridge presenta visiblemente menor dispersión en proyectos de bajo y medio esfuerzo, manteniendo precisión razonable en proyectos grandes.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{fig4_predicciones.png}
+\caption{Esfuerzo predicho vs real sobre el conjunto de prueba (19 muestras). Ridge muestra menor dispersión sistemática.}
+\label{fig:predicciones}
+\end{figure}
+
+La Figura~\ref{fig:comparacion} sintetiza los dos hallazgos centrales del estudio. El panel (a) presenta la distribución del RMSE en escala logarítmica sobre los 50 folds de validación cruzada repetida: Ridge no solo tiene la mediana más baja sino también la menor varianza (rango intercuartílico más estrecho). El panel (b) revela el problema fundamental del modelo OLS y de la polinómica: la \textbf{brecha entre R$^2$ Train y R$^2$ Test/CV} es de aproximadamente 0.14--0.20 puntos, evidencia clara de sobreajuste. Ridge cierra esa brecha por completo: Train $\approx$ Test $\approx$ CV $\approx 0.79$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{fig5_comparacion.png}
+\caption{(a) Distribución del RMSE en validación cruzada repetida (50 folds). Ridge presenta menor mediana y menor varianza. (b) Comparación de R$^2$ entre entrenamiento, prueba y CV: la brecha train-test de OLS y polinómica indica sobreajuste; Ridge la elimina.}
+\label{fig:comparacion}
+\end{figure}
+
+\subsection{Selección del Parámetro de Regularización}
+
+El parámetro $\alpha$ de Ridge se seleccionó mediante validación cruzada interna de 5 folds sobre una rejilla de 50 valores logarítmicamente espaciados en $[10^{-3}, 10^{3}]$. El óptimo resultante, $\alpha^{*}=4.71$, corresponde al punto donde el error cuadrático medio de validación se minimiza, equilibrando el sesgo introducido por la contracción de coeficientes contra la reducción de varianza. Valores de $\alpha$ menores aproximan el comportamiento de OLS (alta varianza), mientras que valores mayores contraen excesivamente los coeficientes (alto sesgo).
+
+\section{Discusión}
+
+\subsection{Interpretación de los Resultados}
+
+Los resultados convergen en una conclusión técnica robusta: \textbf{Ridge supera tanto al OLS base como a la alternativa polinómica}, no por tener mejor ajuste en entrenamiento (de hecho lo tiene peor: 0.794 vs 0.874), sino por su capacidad superior de generalización. Tres líneas de evidencia respaldan esta afirmación:
+
+\begin{enumerate}[itemsep=2pt,leftmargin=1.5em]
+\item \textbf{Brecha train-test:} OLS exhibe una caída de R$^2$ de 0.874 (train) a 0.673 (test), una pérdida de 0.20 puntos. Ridge mantiene 0.794 en train y \emph{aumenta} a 0.799 en test, firma característica del control de sobreajuste mediante regularización.
+\item \textbf{Estabilidad en CV repetida:} la desviación estándar del R$^2$ en 50 folds es 0.107 para Ridge frente a 0.159 (OLS) y 0.160 (polinómica). Ridge produce predicciones $\sim$50\% más estables ante variaciones en los datos de entrenamiento.
+\item \textbf{Métricas en escala original:} sobre los 19 proyectos de prueba, Ridge reduce el MAE en 12 PM (11.9\%) y el RMSE en 43 PM (21.5\%) respecto a OLS. En un contexto donde 1 persona-mes equivale a $\sim$\$10{,}000 USD~[2], la diferencia es económicamente significativa.
+\end{enumerate}
+
+\subsection{Por qué la Polinómica No Aportó}
+
+La hipótesis de añadir $\log(\mathrm{KLOC})^2$ era capturar posibles cambios de régimen en la relación tamaño--esfuerzo. Los resultados muestran que la mejora sobre OLS es marginal (R$^2$ Test: 0.701 vs 0.673; RMSE: 193.8 vs 202.7 PM) y \emph{empeora ligeramente en CV} (0.731 vs 0.738). La relación log-log ya capturada por OLS es estadísticamente adecuada para este dataset, por lo que el término cuadrático introduce varianza sin reducir sesgo de forma significativa. Con $n=93$ muestras, añadir features no regularizados es siempre arriesgado: la polinómica ilustra exactamente el problema que Ridge soluciona, \emph{más complejidad sin control conduce a peor generalización}.
+
+\subsection{Limitaciones y Validez Externa}
+
+El estudio presenta cuatro limitaciones que acotan la interpretación de sus resultados. Primero, el \textbf{tamaño muestral pequeño} ($n=93$): aunque la CV repetida mitiga el problema, los intervalos de confianza de las métricas son amplios. Segundo, los \textbf{datos son históricos} (1971--1987), por lo que la validez externa hacia proyectos modernos (cloud-native, equipos distribuidos, lenguajes dinámicos) es cuestionable; COCOMO-I fue diseñado para desarrollo en cascada con stacks tradicionales. Tercero, ningún modelo establece \textbf{causalidad}: un coeficiente alto para \texttt{acap} refleja una asociación condicional dado el resto de variables, no un efecto causal. Cuarto, el estudio \textbf{no compara contra modelos no lineales} (Random Forest, Gradient Boosting), que podrían superar a Ridge en R$^2$ a costa de menor interpretabilidad; la elección del modelo base lineal responde al alcance de las Unidades 1 y 2.
+
+\section{Conclusiones}
+
+\begin{enumerate}[itemsep=3pt,leftmargin=1.5em]
+\item \textbf{Modelo reportado:} se recomienda \textbf{Ridge con $\alpha^{*}=4.71$} como modelo final para la estimación de esfuerzo sobre NASA93. Justificación: R$^2$ Test = 0.799 (vs 0.673 OLS), MAE = 94.7 PM (vs 107.5 OLS), brecha train-test eliminada, y menor varianza en CV repetida (0.107 vs 0.159).
+
+\item \textbf{El modelo más complejo no es el mejor modelo:} la regresión polinómica, aunque más expresiva que OLS, no aportó capacidad predictiva y degradó ligeramente la generalización. Este resultado refuerza el principio de parsimonia: añadir features sin regularización sobre $n=93$ muestras incrementa varianza sin reducir sesgo.
+
+\item \textbf{La regularización es esencial bajo multicolinealidad:} con un VIF máximo de 10.89, OLS produce coeficientes inestables. Ridge demuestra empíricamente la ganancia teórica predicha por Hoerl y Kennard~[3]: aceptar un pequeño sesgo a cambio de una reducción sustancial de la varianza.
+
+\item \textbf{La validación cruzada repetida es indispensable en muestras pequeñas:} con $n=93$, una sola partición train/test puede dar resultados engañosos. La CV repetida (50 folds) reveló diferencias de estabilidad entre modelos que una evaluación única no habría capturado. Esto, combinado con la transformación logarítmica que sostiene los supuestos de normalidad ($p=0.272$) y homoscedasticidad ($p=0.412$), constituye la base metodológica del estudio. Todo el flujo es reproducible con \texttt{random\_state=42}.
+\end{enumerate}
+
+% ── REFERENCIAS APA 7 ────────────────────────────────────────────────────────
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+
+\begingroup
+\setstretch{1.0}
+\begin{enumerate}[label={[\arabic*]},itemsep=2pt,leftmargin=1.8em]
+
+\item\label{boehm1981software} Boehm, B. W. (1981).
+  \textit{Software engineering economics}. Prentice-Hall.
+
+\item\label{boehm2000cocomo} Boehm, B. W., Horowitz, E., Madachy, R., Reifer, D., Clark, B. K., Steece, B., Brown, A. W., Chulani, S., \& Abts, C. (2000).
+  \textit{Software cost estimation with COCOMO II}. Prentice Hall.
+
+\item\label{hoerl1970ridge} Hoerl, A. E., \& Kennard, R. W. (1970).
+  Ridge regression: Biased estimation for nonorthogonal problems.
+  \textit{Technometrics}, \textit{12}(1), 55--67.
+  \url{https://doi.org/10.1080/00401706.1970.10488634}
+
+\item\label{menzies2005validation} Menzies, T., Port, D., Chen, Z., Hihn, J., \& Stukes, S. (2005).
+  Validation methods for calibrating software effort models.
+  En \textit{Proceedings of the 27th International Conference on Software Engineering (ICSE)} (pp. 587--595). ACM.
+  \url{https://doi.org/10.1145/1062455.1062558}
+
+\item\label{zenodo268419} Menzies, T. (2017).
+  \textit{nasa93 [Data set]}. Zenodo.
+  \url{https://doi.org/10.5281/zenodo.268419}
+
+\item\label{bouckaert2004evaluating} Bouckaert, R. R., \& Frank, E. (2004).
+  Evaluating the replicability of significance tests for comparing learning algorithms.
+  En \textit{Advances in Knowledge Discovery and Data Mining} (Vol. 3056, pp. 3--12). Springer.
+  \url{https://doi.org/10.1007/978-3-540-24775-3_3}
+
+\item\label{james2013introduction} James, G., Witten, D., Hastie, T., \& Tibshirani, R. (2013).
+  \textit{An introduction to statistical learning with applications in R}. Springer.
+  \url{https://doi.org/10.1007/978-1-4614-7138-7}
+
+\item\label{pedregosa2011scikit} Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cournapeau, D., Brucher, M., Perrot, M., \& Duchesnay, E. (2011).
+  Scikit-learn: Machine learning in Python.
+  \textit{Journal of Machine Learning Research}, \textit{12}, 2825--2830.
+
+\end{enumerate}
+\endgroup
+
+\end{document}
